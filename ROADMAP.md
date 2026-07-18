@@ -86,9 +86,8 @@ env.pass = ["OPENAI_API_KEY"]
 ### Phase 0 — Foundation
 *Goal: the repo builds and runs a "hello from cage".*
 
-- [ ] `cargo init`, module layout, build CI
-- [ ] TOML parsing via `toml` + `serde` derive (typed structs, near-free)
-- [ ] Typed `.cagerc` structs + validation
+- [x] TOML parsing via `toml` + `serde` derive (typed structs, near-free)
+- [x] Typed `.cagerc.toml` structs + validation
 - [ ] `cage doctor`: check `bwrap` on PATH, userns enabled, kernel version
 - [ ] Subcommand routing with `clap` (derive API)
 
