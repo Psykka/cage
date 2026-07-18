@@ -1,5 +1,8 @@
-mod config;
+mod cli;
+
+use std::process;
 
 fn main() {
-    println!("Hello, world!");
+    let code = cli::run();
+    process::exit(code)
 }

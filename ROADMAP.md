@@ -5,10 +5,8 @@
 > allowlisted egress and transparent, controlled access to host services.
 
 Written in **Rust** — the core (exec, fds, unix sockets, child-process
-lifecycle) maps cleanly onto the standard library and a couple of mature crates,
-and the TUI ecosystem is strong enough that the visual layer is no longer the
-hard part. TUI comes last only because it's a frontend over the core, not
-because it's painful.
+lifecycle) maps cleanly onto the standard library and a couple of mature crates.
+CLI only; no TUI planned.
 
 ---
 
@@ -24,11 +22,11 @@ not the rule.
 3. **External and internal are the same mechanism** (a unix-socket bridge),
    differing only in what sits on the far side: a filtering proxy (external) vs.
    a transparent forward (internal).
-4. **`.cagerc` is inert until trusted.** An untrusted repo writes the `.cagerc`,
+4. **`.cagerc.toml` is inert until trusted.** An untrusted repo writes the `.cagerc.toml`,
    so it must not be able to design its own cage. `cage allow` (hash-pinned,
    direnv-style) is what separates "security tool" from "pretty wrapper".
 5. **Global ceiling.** `~/.config/cage/config` defines the maximum. The repo's
-   `.cagerc` can only *tighten* — never loosen. Repo config is a subset of the ceiling.
+   `.cagerc.toml` can only *tighten* — never loosen. Repo config is a subset of the ceiling.
 6. **Don't reimplement namespaces.** `cage` orchestrates, `bwrap` executes.
    (Moving to direct `clone()`/`unshare()` is a long-term goal, not MVP.)
 
@@ -36,22 +34,21 @@ not the rule.
 
 ## Command surface (final target)
 
-| Command | Group | What it does |
-|---|---|---|
-| `cage init` | setup | Scaffold a `.cagerc` in the repo, commented section by section |
-| `cage` (no args) | setup | Open the TUI — visual editor for config + profiles |
-| `cage allow` | setup | Mark the current `.cagerc` as trusted (hash-pinned) |
-| `cage shell [profile]` | exec | **Enter** the cage — interactive shell, venv-style, until `exit` |
-| `cage run [profile] -- cmd` | exec | Run **one** command in the cage and leave (CI/script flow) |
-| `cage doctor` | diag | Preflight: does bwrap exist? userns enabled? binds present? |
-| `cage log` | diag | Allow/deny from the last run's proxy (flags suspicious attempts) |
+| Command                                 | Group | What it does                                                        |
+|-----------------------------------------|-------|---------------------------------------------------------------------|
+| `cage init`                             | setup | Scaffold a `.cagerc.toml` in the repo, commented section by section |
+| `cage [-p/--profile <name>]`            | exec  | **Enter** the cage — interactive shell, venv-style, until `exit`    |
+| `cage allow`                            | setup | Mark the current `.cagerc.toml` as trusted (hash-pinned)            |
+| `cage run [-p/--profile <name>] -- cmd` | exec  | Run **one** command in the cage and leave (CI/script flow)          |
+| `cage check`                            | diag  | Preflight: does bwrap exist? userns enabled? binds present?         |
+| `cage log`                              | diag  | Allow/deny from the last run's proxy (flags suspicious attempts)    |
 
-`shell` and `run` share **the same argv compiler**. The only difference is
-whether the final process is an interactive shell or the user's command.
+The bare `cage` and `run` share **the same argv compiler**. The only difference
+is whether the final process is an interactive shell or the user's command.
 
 ---
 
-## `.cagerc` format (target)
+## `.cagerc.toml` format (target)
 
 ```toml
 [cage]
@@ -88,8 +85,10 @@ env.pass = ["OPENAI_API_KEY"]
 
 - [x] TOML parsing via `toml` + `serde` derive (typed structs, near-free)
 - [x] Typed `.cagerc.toml` structs + validation
-- [ ] `cage doctor`: check `bwrap` on PATH, userns enabled, kernel version
-- [ ] Subcommand routing with `clap` (derive API)
+- [ ] `cage check`: check `bwrap` on PATH, userns enabled, kernel version
+- [x] Subcommand routing scaffold (hand-rolled, no `clap`) — dispatch exists,
+      no subcommands wired yet
+- [x] Wire first command (`cage init` → `Config::init_in`) — "hello from cage"
 
 ### Phase 1 — The argv compiler (the heart)
 *Goal: declarative config → correct bwrap line. No networking yet.*
@@ -129,7 +128,7 @@ env.pass = ["OPENAI_API_KEY"]
 > Milestone: inside the cage, `psql -h 127.0.0.1` connects to the host's Postgres —
 > but only because `5432` is on the list. Drop it from the list, it vanishes.
 
-### Phase 4 — `cage shell` (the venv mode)
+### Phase 4 — `cage` shell mode (the venv mode)
 *Goal: enter and live in the cage, like `venv`, but actually isolated.*
 
 - [ ] Interactive child shell inside the cage (doesn't edit the current shell — new world)
@@ -140,10 +139,10 @@ env.pass = ["OPENAI_API_KEY"]
 - [ ] `exit`/Ctrl-D tears down the namespace cleanly (no `deactivate`, leaving is leaving)
 
 ### Phase 5 — Trust model
-*Goal: a malicious `.cagerc` can't design its own cage.*
+*Goal: a malicious `.cagerc.toml` can't design its own cage.*
 
-- [ ] `cage allow`: record path + hash of the `.cagerc` as trusted
-- [ ] Untrusted `.cagerc` → refuse to run, ask for `cage allow`
+- [ ] `cage allow`: record path + hash of the `.cagerc.toml` as trusted
+- [ ] Untrusted `.cagerc.toml` → refuse to run, ask for `cage allow`
 - [ ] Hash changed → revoke trust, ask again
 - [ ] Global ceiling actually enforced (repo never escalates past it)
 - [ ] Warnings on sensitive binds (`~/.ssh`, `~/.aws`, `~/.config`, the whole `$HOME`)
@@ -151,31 +150,9 @@ env.pass = ["OPENAI_API_KEY"]
 > Without this phase the tool gives a false sense of security and **worsens** your
 > posture. Do not skip.
 
-### Phase 6 — TUI
-*Goal: `cage` with no args opens a visual editor.*
-
-- [ ] `ratatui` + `crossterm` (mature stack; the visual layer is not the bottleneck)
-- [ ] Config-tree editor: base + profiles as a visual merge
-- [ ] Toggle external hosts / internal ports
-- [ ] Visual warning when exposing a sensitive path (the easy path must be the safe one)
-- [ ] Compiled-argv preview inside the TUI
-
-### Backlog / long term
-
-- [ ] Replace socat with a native bridge in Rust (fewer external deps)
-- [ ] Optional mitmproxy: pull the API key out of the cage (host injects the header)
-- [ ] Direct `clone()`/`unshare()` via the `nix` crate, retiring the bwrap shell-out
-- [ ] Per-profile seccomp (syscall filtering beyond the namespace)
-- [ ] More shells supported in prompt injection
-
 ---
 
 ## Field notes
 
-- **Prior art:** `bubblejail` is a bwrap frontend with profiles — but *app*-oriented
-  (it isolates Firefox). `cage`'s differentiator is being oriented toward
-  *repo + agent + allowlisted egress*. Steal its good ideas.
-- **Name:** `cage` collides with a Wayland kiosk compositor. Reevaluate before
-  publishing to `apt`/`brew`.
-- **Runtime deps:** `bwrap` and `socat` (for now). `doctor` should check both.
+- **Runtime deps:** `bwrap` (for now). `check` should check both.
   Unprivileged userns must be enabled in the kernel.

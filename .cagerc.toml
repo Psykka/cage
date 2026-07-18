@@ -1,0 +1,16 @@
+[cage]
+network = "deny"
+
+[filesystem]
+ro = ["/usr", "/bin", "/lib"]
+rw = ["."]
+
+[env]
+unset = ["SSH_AUTH_SOCK"]
+
+[internal]
+expose = []
+
+[profiles.claude]
+allow = ["api.anthropic.com:443"]
+pass = ["ANTHROPIC_API_KEY"]
