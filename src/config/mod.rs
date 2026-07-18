@@ -1,5 +1,5 @@
-mod error;
-mod template;
+pub mod error;
+pub mod template;
 
 use serde::Deserialize;
 use std::{
@@ -8,8 +8,8 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use error::ConfigError;
-use template::{CONFIG_FILENAME, DEFAULT_CAGERC};
+pub use error::ConfigError;
+pub use template::{CONFIG_FILENAME, DEFAULT_CAGERC};
 
 #[derive(Deserialize)]
 pub struct Config {
@@ -31,7 +31,7 @@ pub struct Cage {
     pub network: Network,
 }
 
-#[derive(Deserialize, Clone, Copy, PartialEq)]
+#[derive(Deserialize, Clone, Copy, PartialEq, Debug)]
 #[serde(rename_all = "lowercase")]
 pub enum Network {
     Deny,
@@ -82,7 +82,7 @@ impl Config {
         Ok(())
     }
 
-    fn init_in(dir: &Path, force: bool) -> Result<Self, ConfigError> {
+    pub fn init_in(dir: &Path, force: bool) -> Result<Self, ConfigError> {
         let config_path = dir.join(CONFIG_FILENAME);
 
         if !config_path.exists() || force {
@@ -101,16 +101,3 @@ impl Config {
     }
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use tempfile::tempdir;
-
-    #[test]
-    fn init_creates_config_when_absent() {
-        let dir = tempdir().unwrap();
-        Config::init_in(dir.path(), false).unwrap();
-
-        assert!(dir.path().join(CONFIG_FILENAME).exists());
-    }
-}
