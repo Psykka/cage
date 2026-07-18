@@ -61,14 +61,12 @@ cargo build --release
 
 ## Usage
 
-| Command | Description |
-|---------|-------------|
-| `cage init` | Scaffold a commented `.cagerc.toml` in the current repo |
-| `cage allow` | Mark the current `.cagerc.toml` as trusted (hash-pinned) |
-| `cage [-p/--profile <name>]` | Enter the cage — interactive shell, venv-style, until `exit` |
-| `cage run [-p/--profile <name>] -- <command>` | Run a single command in the cage and leave (CI/script flow) |
-| `cage check` | Preflight check: does bwrap exist? userns enabled? binds present? |
-| `cage log` | Show allow/deny from the last run's proxy |
+`cage init` Scaffold a commented `.cagerc.toml` in the current repo     
+`cage allow` Mark the current `.cagerc.toml` as trusted (hash-pinned)      
+`cage [-p/--profile <name>]` Enter the cage — interactive shell, venv-style, until `exit`    
+`cage run [-p/--profile <name>] -- <command>` Run a single command in the cage and leave (CI/script flow)      
+`cage check` Preflight check: does bwrap exist? userns enabled? binds present?      
+`cage log` Show allow/deny from the last run's proxy     
 
 The bare `cage` (shell mode) and `cage run` share the same argv compiler —
 the only difference is whether the final process is an interactive shell or
